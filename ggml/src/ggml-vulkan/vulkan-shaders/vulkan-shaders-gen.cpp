@@ -223,10 +223,11 @@ void string_to_spv_func(const std::string& _name, const std::string& in_fname, c
     // disable spirv-opt for coopmat shaders for https://github.com/ggerganov/llama.cpp/issues/10734
     std::string opt_level = coopmat ? "-O0" : "-O2";
 
+    std::string warning_disable = "-warnings-disable 15205,39001,30081";
     #ifdef _WIN32
         std::vector<std::string> cmd = {GLSLC, "-fshader-stage=compute", target_env, opt_level, "\"" + in_path + "\"", "-o", "\"" + out_fname + "\""};
     #else
-        std::vector<std::string> cmd = {GLSLC, "-stage compute -entry main", opt_level, in_path, "-o",  out_fname};
+        std::vector<std::string> cmd = {GLSLC, "-stage compute -entry main -allow-glsl", opt_level, in_path, "-o",  out_fname, warning_disable};
     #endif
 
     #ifdef GGML_VULKAN_SHADER_DEBUG_INFO
@@ -253,11 +254,12 @@ void string_to_spv_func(const std::string& _name, const std::string& in_fname, c
         execute_command(command, stdout_str, stderr_str);
         if (!stderr_str.empty()) {
             std::cerr << "cannot compile " << name << "\n\n" << command << "\n\n" << stderr_str << std::endl;
-            return;
         }
-
-        std::lock_guard<std::mutex> guard(lock);
-        shader_fnames.push_back(std::make_pair(name, out_fname));
+        else
+        {
+            std::lock_guard<std::mutex> guard(lock);
+            shader_fnames.push_back(std::make_pair(name, out_fname));
+        }
     } catch (const std::exception& e) {
         std::cerr << "Error executing command for " << name << ": " << e.what() << std::endl;
     }

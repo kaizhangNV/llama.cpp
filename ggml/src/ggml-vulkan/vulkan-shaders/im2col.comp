@@ -4,9 +4,9 @@
 #extension GL_EXT_spirv_intrinsics: enable
 #extension GL_EXT_control_flow_attributes : require
 
-#if RTE16
-spirv_execution_mode(capabilities = [4467], 4462, 16); // RoundingModeRTE, 16 bits
-#endif
+//#if RTE16
+//spirv_execution_mode(capabilities = [4467], 4462, 16); // RoundingModeRTE, 16 bits
+//#endif
 
 layout (push_constant) uniform parameter
 {
@@ -34,6 +34,15 @@ layout (binding = 0) readonly buffer X {A_TYPE data_a[];};
 layout (binding = 1) writeonly buffer D {D_TYPE data_d[];};
 
 void main() {
+
+#if RTE16
+    spirv_asm
+    {
+        OpCapability CapabilityRoundingModeRTE;
+        OpExecutionMode $main ExecutionModeRoundingModeRTE 16;
+    };
+#endif // RTE16
+
     const uint gidx = gl_GlobalInvocationID.x;
 
     const uint oh = gl_GlobalInvocationID.y;

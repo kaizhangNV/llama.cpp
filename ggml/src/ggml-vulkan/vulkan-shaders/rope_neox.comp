@@ -3,6 +3,15 @@
 #include "rope_head.comp"
 
 void main() {
+
+#if RTE16
+    spirv_asm
+    {
+        OpCapability CapabilityRoundingModeRTE;
+        OpExecutionMode $main ExecutionModeRoundingModeRTE 16;
+    };
+#endif // RTE16
+
     const uint i0 = 2*gl_GlobalInvocationID.y;
     uint ne0 = p.ncols;
     uint ne1 = p.p_delta_rows;

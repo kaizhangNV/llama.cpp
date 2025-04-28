@@ -56,9 +56,9 @@ void main() {
         return;
     }
 
-    #pragma unroll
+    [[unroll]]
     for (uint i = bh; i < eh; i++) {
-        #pragma unroll
+        [[unroll]]
         for (uint j = bw; j < ew; j++) {
             const float cur = D_TYPE(data_a[nc * p.IH * p.IW + i * p.IW + j]);
 
