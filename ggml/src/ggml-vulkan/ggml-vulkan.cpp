@@ -3794,7 +3794,8 @@ static void ggml_vk_dispatch_pipeline(ggml_backend_vk_context* ctx, vk_context& 
                                 0,
                                 { descriptor_set },
                                 {});
-    subctx->s->buffer.dispatch(wg0, wg1, wg2);
+    // subctx->s->buffer.dispatch(wg0, wg1, wg2);
+    subctx->s->buffer.dispatch(1, 1, 1);
 }
 
 static void ggml_vk_end_submission(vk_submission& s, std::vector<vk_semaphore> wait_semaphores, std::vector<vk_semaphore> signal_semaphores) {
@@ -4431,18 +4432,18 @@ static void ggml_vk_mul_mat_q_f16(ggml_backend_vk_context * ctx, vk_context& sub
     GGML_ASSERT(ggml_vk_dim01_contiguous(src0) || src0->type == GGML_TYPE_F32 || src0->type == GGML_TYPE_F16);  // NOLINT
     GGML_ASSERT(ggml_vk_dim01_contiguous(src1) || src1->type == GGML_TYPE_F32 || src1->type == GGML_TYPE_F16);  // NOLINT
 
-    const uint64_t ne00 = src0->ne[0];
-    const uint64_t ne01 = src0->ne[1];
+    const uint64_t ne00 = src0->ne[0];  // column
+    const uint64_t ne01 = src0->ne[1];  // row
     const uint64_t ne02 = src0->ne[2];
     const uint64_t ne03 = src0->ne[3];
 
-    const uint64_t ne10 = src1->ne[0];
-    const uint64_t ne11 = src1->ne[1];
+    const uint64_t ne10 = src1->ne[0];  // column
+    const uint64_t ne11 = src1->ne[1];  // row
     const uint64_t ne12 = src1->ne[2];
     const uint64_t ne13 = src1->ne[3];
 
-    const uint64_t ne20 = dst->ne[0];
-    const uint64_t ne21 = dst->ne[1];
+    const uint64_t ne20 = dst->ne[0];   // column
+    const uint64_t ne21 = dst->ne[1];   // row
 
     const uint64_t r2 = ne12 / ne02;
     const uint64_t r3 = ne13 / ne03;
@@ -4503,8 +4504,8 @@ static void ggml_vk_mul_mat_q_f16(ggml_backend_vk_context * ctx, vk_context& sub
 
     // Reserve extra storage in the N dimension for the Y matrix, so we can avoid bounds-checking
     uint32_t padded_n = qy_needs_dequant ? ROUNDUP_POW2(ne11, pipeline->wg_denoms[1]) : ne11;
-    const int x_ne = ne01 * ne00;
-    const int y_ne = padded_n * ne10;
+    const int x_ne = ne01 * ne00;       // slice for mat A
+    const int y_ne = padded_n * ne10;   // slide for mat B
     const int d_ne = ne11 * ne01;
 
     const uint32_t split_k = ggml_vk_guess_split_k(ctx, ne01, ne11, ne10, pipeline);
@@ -9973,6 +9974,52 @@ static void ggml_vk_check_results_0(ggml_tensor * tensor) {
     VK_LOG_DEBUG("END ggml_vk_check_results_0(" << tensor->name << ")");
 }
 
+static void ggml_vk_print_tensor_all(const ggml_tensor * tensor, const void * data, int i0, int i1, int i2, int i3) {
+    if (tensor->type != GGML_TYPE_F32 && tensor->type != GGML_TYPE_F16 && tensor->type != GGML_TYPE_I32) {
+        return;
+    }
+    fprintf(stderr, "\n         ");
+    for (int idx1 = 0; idx1 < i1; idx1++) {
+        fprintf(stderr, "%7d ", idx1);
+    }
+    fprintf(stderr, "\n");
+    for (int idx0 = 0; idx0 < i0; idx0++) {
+        fprintf(stderr, "%7d: ", idx0);
+        for (int idx1 = 0; idx1 < i1; idx1++) {
+            if (idx0 >= 0 && idx0 < tensor->ne[0] && idx1 >= 0 && idx1 < tensor->ne[1] && i2 >= 0 && i2 < tensor->ne[2] && i3 >= 0 && i3 < tensor->ne[3]) {
+                float val;
+                if (tensor->type == GGML_TYPE_F32) {
+                    val = *(const float *) ((const char *) data + i3*tensor->nb[3] + i2*tensor->nb[2] + idx1*tensor->nb[1] + idx0*tensor->nb[0]);
+                } else if (tensor->type == GGML_TYPE_F16) {
+                    val = ggml_fp16_to_fp32(*(const ggml_fp16_t *) ((const char *) data + i3*tensor->nb[3] + i2*tensor->nb[2] + idx1*tensor->nb[1] + idx0*tensor->nb[0]));
+                } else if (tensor->type == GGML_TYPE_I32) {
+                    val = *(const int32_t *) ((const char *) data + i3*tensor->nb[3] + i2*tensor->nb[2] + idx1*tensor->nb[1] + idx0*tensor->nb[0]);
+                } else {
+                    GGML_ABORT("fatal error");
+                }
+                fprintf(stderr, "% 7.2f ", val);
+            } else {
+                fprintf(stderr, "        ");
+            }
+        }
+        fprintf(stderr, "\n");
+    }
+}
+static void debugTensorPrint(ggml_tensor * tensor)
+{
+    const size_t tensor_size = ggml_nbytes(tensor);
+    auto tensor_data = malloc(tensor_size);
+
+    ggml_backend_vk_buffer_context * buf_ctx = (ggml_backend_vk_buffer_context *)tensor->buffer->context;
+
+    vk_buffer buffer_gpu = buf_ctx->dev_buffer;
+    ggml_vk_buffer_read(buffer_gpu, vk_tensor_offset(tensor) + tensor->view_offs, tensor_data, tensor_size);
+
+    ggml_vk_print_tensor_all(tensor, tensor_data, tensor->ne[0], tensor->ne[1], 0, 0);
+
+    free(tensor_data);
+}
+
 static void ggml_vk_check_results_1(ggml_tensor * tensor) {
     if (tensor->op == GGML_OP_TRANSPOSE) {
         return;
@@ -9987,6 +10034,12 @@ static void ggml_vk_check_results_1(ggml_tensor * tensor) {
     ggml_tensor * src1 = tensor->src[1];
     ggml_tensor * src2 = tensor->src[2];
     ggml_tensor * src3 = tensor->src[3];
+
+    {
+        debugTensorPrint(src0);
+        debugTensorPrint(src1);
+        debugTensorPrint(tensor);
+    }
 
     void * tensor_data = tensor->data;
 

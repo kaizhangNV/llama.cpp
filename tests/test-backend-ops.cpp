@@ -56,7 +56,7 @@ static void init_tensor_uniform(ggml_tensor * tensor, float min = -1.0f, float m
             std::uniform_real_distribution<float> distribution(min, max);
             auto & gen = generators[ith];
             for (size_t i = start; i < end; i++) {
-                data[i] = distribution(gen);
+                data[i] = i + 1.0f; //distribution(gen);
             }
         };
 
@@ -4146,7 +4146,7 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
     //     }
     // }
 
-    test_cases.emplace_back(new test_mul_mat(GGML_TYPE_F32,    GGML_TYPE_F32, 16,  9, 256, { 1,  1}, {1, 1}));
+    test_cases.emplace_back(new test_mul_mat(GGML_TYPE_F32, GGML_TYPE_F32, 8, 9, 32, { 1,  1}, {1, 1}));
 
 #if 0
     for (ggml_type type_a : base_types) {

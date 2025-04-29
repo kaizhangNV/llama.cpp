@@ -216,6 +216,7 @@ static std::condition_variable compile_count_cond;
 void string_to_spv_func(const std::string& _name, const std::string& in_fname, const std::map<std::string, std::string>& defines, bool fp16 = true, bool coopmat = false, bool coopmat2 = false, bool f16acc = false) {
     std::string name = _name + (f16acc ? "_f16acc" : "") + (coopmat ? "_coopmat" : "") + (coopmat2 ? "_cm2" : (fp16 ? "" : "_fp32"));
     std::string out_fname = join_paths(output_dir, name + ".spv");
+    std::string out_fname_glsl = join_paths(output_dir, name + ".glsl");
     std::string in_path = join_paths(input_dir, in_fname);
 
     std::string target_env = (name.find("_cm2") != std::string::npos) ? "--target-env=vulkan1.3" : "--target-env=vulkan1.2";
@@ -228,6 +229,7 @@ void string_to_spv_func(const std::string& _name, const std::string& in_fname, c
         std::vector<std::string> cmd = {GLSLC, "-fshader-stage=compute", target_env, opt_level, "\"" + in_path + "\"", "-o", "\"" + out_fname + "\""};
     #else
         std::vector<std::string> cmd = {GLSLC, "-stage compute -entry main -allow-glsl", opt_level, in_path, "-o",  out_fname, warning_disable};
+        std::vector<std::string> cmd1 = {"/bin/glslc", "-E", in_path, "-o",  out_fname_glsl, };
     #endif
 
     #ifdef GGML_VULKAN_SHADER_DEBUG_INFO
@@ -243,6 +245,11 @@ void string_to_spv_func(const std::string& _name, const std::string& in_fname, c
         command += part + " ";
     }
 
+    std::string command1;
+    for (const auto& part : cmd1) {
+        command1 += part + " ";
+    }
+
     std::string stdout_str, stderr_str;
     try {
         // std::cout << "Executing command: ";
@@ -252,6 +259,7 @@ void string_to_spv_func(const std::string& _name, const std::string& in_fname, c
         // std::cout << std::endl;
 
         execute_command(command, stdout_str, stderr_str);
+        execute_command(command1, stdout_str, stderr_str);
         if (!stderr_str.empty()) {
             std::cerr << "cannot compile " << name << "\n\n" << command << "\n\n" << stderr_str << std::endl;
         }
