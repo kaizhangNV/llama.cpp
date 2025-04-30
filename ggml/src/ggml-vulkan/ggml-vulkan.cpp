@@ -2997,7 +2997,6 @@ static vk_device ggml_vk_get_device(size_t idx) {
             device_extensions.push_back("VK_KHR_cooperative_matrix");
         }
 #endif
-        device_extensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
         device->name = GGML_VK_NAME + std::to_string(idx);
 
         device_create_info = {
@@ -3233,21 +3232,10 @@ static void ggml_vk_instance_init() {
     const bool portability_enumeration_ext = ggml_vk_instance_portability_enumeration_ext_available(instance_extensions);
 #endif
 
-    uint32_t layerCount = 0;
-    vk::enumerateInstanceLayerProperties(&layerCount, nullptr);
-    std::vector<vk::LayerProperties> layerProps(layerCount);
-    vk::enumerateInstanceLayerProperties(&layerCount, layerProps.data());
-
     std::vector<const char*> layers;
 
     if (validation_ext) {
         layers.push_back("VK_LAYER_KHRONOS_validation");
-    }
-
-    for (auto& layer : layerProps) {
-        if (strcmp(layer.layerName, "VK_LAYER_KHRONOS_validation") == 0) {
-            layers.push_back("VK_LAYER_KHRONOS_validation");
-        }
     }
     std::vector<const char*> extensions;
     if (validation_ext) {
