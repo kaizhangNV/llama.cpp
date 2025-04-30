@@ -106,6 +106,9 @@ shared ACC_TYPE coopmat_stage[TM * TN * NUM_WARPS];
 #endif
 
 void main() {
+
+    debugPrintfEXT("hello world %d %d %d\n", gl_WorkGroupSize.x, gl_WorkGroupSize.y, gl_WorkGroupSize.z);
+
 #ifdef NEEDS_INIT_IQ_SHMEM
     init_iq_shmem(gl_WorkGroupSize);
 #endif

@@ -2997,6 +2997,7 @@ static vk_device ggml_vk_get_device(size_t idx) {
             device_extensions.push_back("VK_KHR_cooperative_matrix");
         }
 #endif
+        device_extensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
         device->name = GGML_VK_NAME + std::to_string(idx);
 
         device_create_info = {
@@ -3210,6 +3211,19 @@ static void ggml_vk_print_gpu_info(size_t idx) {
 
 static bool ggml_vk_instance_validation_ext_available(const std::vector<vk::ExtensionProperties>& instance_extensions);
 static bool ggml_vk_instance_portability_enumeration_ext_available(const std::vector<vk::ExtensionProperties>& instance_extensions);
+static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT       messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT              messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT*  pCallbackData,
+    void*                                        pUserData)
+{
+    if (pCallbackData->pMessageIdName &&
+        std::string(pCallbackData->pMessageIdName).find("DEBUG-PRINTF") != std::string::npos)
+    {
+        std::cerr << pCallbackData->pMessage << std::endl;
+    }
+    return VK_FALSE;
+}
 
 static void ggml_vk_instance_init() {
     if (vk_instance_initialized) {
@@ -3232,11 +3246,26 @@ static void ggml_vk_instance_init() {
     const bool portability_enumeration_ext = ggml_vk_instance_portability_enumeration_ext_available(instance_extensions);
 #endif
 
+    uint32_t layerCount = 0;
+    vk::enumerateInstanceLayerProperties(&layerCount, nullptr);
+    std::vector<vk::LayerProperties> layerProps(layerCount);
+    vk::enumerateInstanceLayerProperties(&layerCount, layerProps.data());
+
     std::vector<const char*> layers;
 
     if (validation_ext) {
         layers.push_back("VK_LAYER_KHRONOS_validation");
     }
+
+
+    for (auto& layer : layerProps) {
+        if (strcmp(layer.layerName, "VK_LAYER_KHRONOS_validation") == 0) {
+            layers.push_back("VK_LAYER_KHRONOS_validation");
+            printf("add validation layer\n");
+        }
+    }
+
+
     std::vector<const char*> extensions;
     if (validation_ext) {
         extensions.push_back("VK_EXT_validation_features");
@@ -3246,6 +3275,7 @@ static void ggml_vk_instance_init() {
         extensions.push_back("VK_KHR_portability_enumeration");
     }
 #endif
+    extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     vk::InstanceCreateInfo instance_create_info(vk::InstanceCreateFlags{}, &app_info, layers, extensions);
 #ifdef __APPLE__
     if (portability_enumeration_ext) {
@@ -3257,7 +3287,7 @@ static void ggml_vk_instance_init() {
     vk::ValidationFeaturesEXT validation_features;
 
     if (validation_ext) {
-        features_enable = { vk::ValidationFeatureEnableEXT::eBestPractices };
+        features_enable = { vk::ValidationFeatureEnableEXT::eBestPractices, vk::ValidationFeatureEnableEXT::eDebugPrintf };
         validation_features = {
             features_enable,
             {},
@@ -3265,9 +3295,38 @@ static void ggml_vk_instance_init() {
         validation_features.setPNext(nullptr);
         instance_create_info.setPNext(&validation_features);
         GGML_LOG_DEBUG("ggml_vulkan: Validation layers enabled\n");
+    } else {
+        features_enable = {vk::ValidationFeatureEnableEXT::eDebugPrintf};
+        validation_features = {
+            features_enable,
+            {},
+        };
+        validation_features.setPNext(nullptr);
+        instance_create_info.setPNext(&validation_features);
+        GGML_LOG_DEBUG("ggml_vulkan: debug printf enabled\n");
     }
+
     vk_instance.instance = vk::createInstance(instance_create_info);
     vk_instance_initialized = true;
+
+    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)
+        vkGetInstanceProcAddr(vk_instance.instance, "vkCreateDebugUtilsMessengerEXT");
+
+    VkDebugUtilsMessengerCreateInfoEXT   createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    createInfo.messageSeverity =
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT    |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    createInfo.messageType =
+        VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    createInfo.pfnUserCallback = debugCallback;
+
+    VkDebugUtilsMessengerEXT debugMessenger;
+    func(vk_instance.instance, &createInfo, nullptr, &debugMessenger);
 
     size_t num_available_devices = vk_instance.instance.enumeratePhysicalDevices().size();
 
