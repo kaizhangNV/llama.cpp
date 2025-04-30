@@ -238,6 +238,7 @@ void string_to_spv_func(const std::string& _name, const std::string& in_fname, c
 
     for (const auto& define : defines) {
         cmd.push_back("-D" + define.first + "=" + define.second);
+        cmd1.push_back("-D" + define.first + "=" + define.second);
     }
 
     std::string command;

@@ -4146,7 +4146,7 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
     //     }
     // }
 
-    test_cases.emplace_back(new test_mul_mat(GGML_TYPE_F32, GGML_TYPE_F32, 8, 9, 32, { 1,  1}, {1, 1}));
+    test_cases.emplace_back(new test_mul_mat(GGML_TYPE_F32, GGML_TYPE_F32, 9, 9, 32, { 1,  1}, {1, 1}));
 
 #if 0
     for (ggml_type type_a : base_types) {

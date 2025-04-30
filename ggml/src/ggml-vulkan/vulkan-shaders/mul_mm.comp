@@ -2,6 +2,7 @@
 
 #extension GL_EXT_control_flow_attributes : enable
 #extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_debug_printf : enable
 
 #ifdef FLOAT16
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
@@ -215,10 +216,11 @@ void main() {
     FLOAT_TYPE cache_b[TN];
 
     [[unroll]] for (uint i = 0; i < WMITER*TM*WNITER*TN; i++) {
-        sums[i] = ACC_TYPE(i+1);
+        sums[i] = ACC_TYPE(0);
     }
 #endif
 
+    uint globalIndex = 0;
     for (uint block = start_k; block < end_k; block += BK) {
         [[unroll]] for (uint l = 0; l < BM; l += loadstride_a) {
 
@@ -735,12 +737,14 @@ void main() {
             }
         }
 #else
-/*
+
         [[unroll]] for (uint i = 0; i < BK; i++) {
             // Load from shared into cache
             [[unroll]] for (uint wsir = 0; wsir < WMITER; wsir++) {
                 [[unroll]] for (uint j = 0; j < TM; j++) {
                     cache_a[wsir * TM + j] = buf_a[(warp_r * WM + wsir * WSUBM + tiwr * TM + j) * SHMEM_STRIDE + i];
+                    float v = cache_a[wsir * TM + j];
+                    debugPrintfEXT("cache_a[%d] = %f\n", (wsir * TM + j), v);
                 }
             }
             [[unroll]] for (uint wsic = 0; wsic < WNITER; wsic++) {
@@ -752,13 +756,13 @@ void main() {
                     [[unroll]] for (uint cc = 0; cc < TN; cc++) {
                         [[unroll]] for (uint cr = 0; cr < TM; cr++) {
                             const uint sums_idx = (wsic * TN + cc) * (WMITER * TM) + wsir * TM + cr;
-                            sums[sums_idx] = fma(ACC_TYPE(cache_a[wsir * TM + cr]), ACC_TYPE(cache_b[cc]), sums[sums_idx]);
+                            sums[sums_idx] = ACC_TYPE(cache_b[cc]); //ACC_TYPE(cache_a[wsir * TM + cr]) * ACC_TYPE(cache_b[cc]); //fma(ACC_TYPE(cache_a[wsir * TM + cr]), ACC_TYPE(cache_b[cc]), /*sums[sums_idx]*/ ACC_TYPE(0.0f));
                         }
                     }
                 }
             }
         }
-*/
+
 #endif
 
         barrier();
@@ -837,7 +841,7 @@ void main() {
                     data_d[row_idx.y * p.batch_stride_d + row_idx.x * p.stride_d + dr_warp + cr] = D_TYPE(sums[(wsic * TN + cc) * (WMITER * TM) + wsir * TM + cr]);
 #else
                     if (dr_warp + cr < p.M && dc_warp + cc < p.N) {
-                        data_d[offsets + (dc_warp + cc) * p.stride_d + dr_warp + cr] = i++; //D_TYPE(sums[(wsic * TN + cc) * (WMITER * TM) + wsir * TM + cr]);
+                        data_d[offsets + (dc_warp + cc) * p.stride_d + dr_warp + cr] = D_TYPE(sums[(wsic * TN + cc) * (WMITER * TM) + wsir * TM + cr]);
                     }
 #endif // MUL_MAT_ID
                 }
