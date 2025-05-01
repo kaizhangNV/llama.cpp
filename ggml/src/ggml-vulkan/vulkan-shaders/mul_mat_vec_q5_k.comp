@@ -115,11 +115,6 @@ void calc_superblock(const uint a_offset, const uint b_offset, const uint v_im, 
               fma(FLOAT_TYPE(by20.x) + FLOAT_TYPE(by20.y) + FLOAT_TYPE(by216.x) + FLOAT_TYPE(by216.y), sc6,
                   (FLOAT_TYPE(by232.x) + FLOAT_TYPE(by232.y) + FLOAT_TYPE(by248.x) + FLOAT_TYPE(by248.y)) * sc7)));
             temp[j][n] = fma(dall, fma(sx, sc0, fma(sy, sc1, fma(sz, sc4, sw * sc5))), fma(-dmin, smin, temp[j][n]));
-
-            if (gl_LocalInvocationID.x == 0)
-            {
-                debugPrintfEXT("[%d], %u %u %f\n", gl_LocalInvocationID.x, j,n, temp[j][n] );
-            }
         }
     }
 }
