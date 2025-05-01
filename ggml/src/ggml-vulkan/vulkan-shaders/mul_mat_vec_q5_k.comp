@@ -1,6 +1,7 @@
 #version 450
 
 #extension GL_EXT_shader_explicit_arithmetic_types_int32 : require
+#extension GL_EXT_debug_printf : enable
 
 #include "mul_mat_vec_base.comp"
 
@@ -114,6 +115,11 @@ void calc_superblock(const uint a_offset, const uint b_offset, const uint v_im, 
               fma(FLOAT_TYPE(by20.x) + FLOAT_TYPE(by20.y) + FLOAT_TYPE(by216.x) + FLOAT_TYPE(by216.y), sc6,
                   (FLOAT_TYPE(by232.x) + FLOAT_TYPE(by232.y) + FLOAT_TYPE(by248.x) + FLOAT_TYPE(by248.y)) * sc7)));
             temp[j][n] = fma(dall, fma(sx, sc0, fma(sy, sc1, fma(sz, sc4, sw * sc5))), fma(-dmin, smin, temp[j][n]));
+
+            if (gl_LocalInvocationID.x == 0)
+            {
+                debugPrintfEXT("[%d], %u %u %f\n", gl_LocalInvocationID.x, j,n, temp[j][n] );
+            }
         }
     }
 }
@@ -154,7 +160,13 @@ void compute_outputs(const uint32_t first_row, const uint32_t num_rows) {
 
 void main() {
     const uint first_row = NUM_ROWS * (gl_WorkGroupID.x + gl_NumWorkGroups.x * gl_WorkGroupID.z);
+    // debugPrintfEXT("[%d]", gl_LocalInvocationID.x);
 
+    // if (gl_LocalInvocationID.x == 0)
+    // {
+    //     debugPrintfEXT("[%d %d] first_row: %u, %u, ncol = %d\n", gl_WorkGroupID.x, gl_LocalInvocationID.x, first_row, NUM_ROWS);
+    //
+    // }
     // do NUM_ROWS at a time, unless there aren't enough remaining rows
     if (first_row + NUM_ROWS <= p.stride_d) {
         compute_outputs(first_row, NUM_ROWS);

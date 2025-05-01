@@ -56,7 +56,7 @@ static void init_tensor_uniform(ggml_tensor * tensor, float min = -1.0f, float m
             std::uniform_real_distribution<float> distribution(min, max);
             auto & gen = generators[ith];
             for (size_t i = start; i < end; i++) {
-                data[i] = 1.0f + i; //distribution(gen);
+                data[i] = float(i) * 0.1f; //distribution(gen);
             }
         };
 
@@ -4141,16 +4141,27 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
     test_cases.emplace_back(new test_gla(GGML_TYPE_F32, 32, 64, 128, 4));
 
     // for (ggml_type type_a : all_types) {
+    //     if (type_a == GGML_TYPE_Q5_K ||
+    //         type_a == GGML_TYPE_IQ2_XXS ||
+    //         type_a == GGML_TYPE_IQ3_XXS ||
+
+    //     {
+    //         continue;
+    //     }
     //     for (int i = 1; i < 10; ++i) {
     //         test_cases.emplace_back(new test_mul_mat(type_a,    GGML_TYPE_F32, 16,  i, 256, { 1,  1}, {1, 1}));
     //     }
     // }
 
-    test_cases.emplace_back(new test_mul_mat(GGML_TYPE_F32, GGML_TYPE_F32, 1, 1, 256, { 1,  1}, {1, 1}));
     test_cases.emplace_back(new test_mul_mat(GGML_TYPE_Q5_K, GGML_TYPE_F32, 1, 1, 256, { 1,  1}, {1, 1}));
 
 #if 0
     for (ggml_type type_a : base_types) {
+        if (type_a == GGML_TYPE_IQ2_XXS ||
+            type_a == GGML_TYPE_Q5_K)
+        {
+            continue;
+        }
         for (ggml_type type_b : {GGML_TYPE_F32, GGML_TYPE_F16}) {
             // test cases without permutation
             test_cases.emplace_back(new test_mul_mat(type_a, type_b, 16,  1, 256, {1, 1}, {1, 1}));
@@ -4195,7 +4206,7 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
             test_cases.emplace_back(new test_mul_mat(type_a, type_b, 16, 1, 256, {1,  1}, {1, 1}));
         }
     }
-//#else
+// #else
     // m = a rows
     // n = b rows
     // k = cols
