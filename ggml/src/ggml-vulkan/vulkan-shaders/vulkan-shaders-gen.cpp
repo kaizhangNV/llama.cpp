@@ -260,6 +260,7 @@ void string_to_spv_func(const std::string& _name, const std::string& in_fname, c
         // std::cout << std::endl;
 
         execute_command(command, stdout_str, stderr_str);
+        std::cerr << command <<std::endl;
         execute_command(command1, stdout_str, stderr_str);
         if (!stderr_str.empty()) {
             std::cerr << "cannot compile " << name << "\n\n" << command << "\n\n" << stderr_str << std::endl;
