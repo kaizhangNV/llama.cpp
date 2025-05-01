@@ -3854,8 +3854,7 @@ static void ggml_vk_dispatch_pipeline(ggml_backend_vk_context* ctx, vk_context& 
                                 0,
                                 { descriptor_set },
                                 {});
-    // subctx->s->buffer.dispatch(wg0, wg1, wg2);
-    subctx->s->buffer.dispatch(1, 1, 1);
+    subctx->s->buffer.dispatch(wg0, wg1, wg2);
 }
 
 static void ggml_vk_end_submission(vk_submission& s, std::vector<vk_semaphore> wait_semaphores, std::vector<vk_semaphore> signal_semaphores) {
