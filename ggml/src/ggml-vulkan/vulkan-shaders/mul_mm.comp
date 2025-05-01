@@ -107,6 +107,7 @@ shared ACC_TYPE coopmat_stage[TM * TN * NUM_WARPS];
 
 void main() {
 
+    debugPrintfEXT("id = %d, hello world ********************* \n", gl_LocalInvocationID.x);
 #ifdef NEEDS_INIT_IQ_SHMEM
     init_iq_shmem(gl_WorkGroupSize);
 #endif
@@ -221,6 +222,10 @@ void main() {
     }
 #endif
 
+    if (gl_LocalInvocationID.x == 0)
+    {
+        debugPrintfEXT("id = %d, LOAD_VEC_A = %d\n", gl_LocalInvocationID.x, LOAD_VEC_A);
+    }
     uint globalIndex = 0;
     for (uint block = start_k; block < end_k; block += BK) {
         [[unroll]] for (uint l = 0; l < BM; l += loadstride_a) {
@@ -247,19 +252,18 @@ void main() {
 #else
             uint buf_a_index = (loadc_a + l) * SHMEM_STRIDE + loadr_a;
             uint data_a_index = pos_a + (loadc_a + l) * p.stride_a + loadr_a;
-
             if (ir * BM + loadc_a + l < p.M && block + loadr_a < end_k) {
                 buf_a[buf_a_index] = FLOAT_TYPE(data_a[data_a_index]);
 
-                if (gl_LocalInvocationID.x == 1)
+                if (gl_LocalInvocationID.x == 0)
                 {
                     debugPrintfEXT("id = %d, buf_a[%u] = %f, data_a[%u] = %f\n", gl_LocalInvocationID.x, buf_a_index, buf_a[buf_a_index],
                         data_a_index, FLOAT_TYPE(data_a[data_a_index]));
                 }
             } else {
-                if (gl_LocalInvocationID.x == 1)
+                buf_a[buf_a_index] = FLOAT_TYPE(0.0f);
+                if (gl_LocalInvocationID.x == 0)
                 {
-                    buf_a[(loadc_a + l) * SHMEM_STRIDE + loadr_a] = FLOAT_TYPE(0.0f);
                     debugPrintfEXT("id = %d, buf_a[%u] = %f\n", gl_LocalInvocationID.x, buf_a_index, buf_a[buf_a_index]);
                 }
             }
@@ -467,6 +471,8 @@ void main() {
 
             const float d = loadd.x * sc;
             const float m = -loadd.y * mbyte;
+
+            debugPrintfEXT("id = %d, buf_idx = %u, loadd = %f, %f\n", gl_LocalInvocationID.x, buf_idx, loadd.x, loadd.y);
 
             buf_a[buf_idx    ] = FLOAT_TYPE(fma(d, float((data_a[ib].qs[qsi    ] >> (b * 4)) & 0xF) + float((data_a[ib].qh[qhi    ] & hm) != 0 ? 16 : 0), m));
             buf_a[buf_idx + 1] = FLOAT_TYPE(fma(d, float((data_a[ib].qs[qsi + 1] >> (b * 4)) & 0xF) + float((data_a[ib].qh[qhi + 1] & hm) != 0 ? 16 : 0), m));
@@ -768,7 +774,7 @@ void main() {
                     [[unroll]] for (uint cc = 0; cc < TN; cc++) {
                         [[unroll]] for (uint cr = 0; cr < TM; cr++) {
                             const uint sums_idx = (wsic * TN + cc) * (WMITER * TM) + wsir * TM + cr;
-                            sums[sums_idx] = ACC_TYPE(cache_a[wsir * TM + cr]); //fma(ACC_TYPE(cache_a[wsir * TM + cr]), ACC_TYPE(cache_b[cc]), /*sums[sums_idx]*/ACC_TYPE(0.0f));
+                            sums[sums_idx] = fma(ACC_TYPE(cache_a[wsir * TM + cr]), ACC_TYPE(cache_b[cc]), sums[sums_idx]);
                         }
                     }
                 }

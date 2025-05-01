@@ -3211,6 +3211,8 @@ static void ggml_vk_print_gpu_info(size_t idx) {
 
 static bool ggml_vk_instance_validation_ext_available(const std::vector<vk::ExtensionProperties>& instance_extensions);
 static bool ggml_vk_instance_portability_enumeration_ext_available(const std::vector<vk::ExtensionProperties>& instance_extensions);
+
+static VkDebugUtilsMessengerEXT debugMessenger;
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT       messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT              messageType,
@@ -3325,7 +3327,6 @@ static void ggml_vk_instance_init() {
         VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
     createInfo.pfnUserCallback = debugCallback;
 
-    VkDebugUtilsMessengerEXT debugMessenger;
     func(vk_instance.instance, &createInfo, nullptr, &debugMessenger);
 
     size_t num_available_devices = vk_instance.instance.enumeratePhysicalDevices().size();
@@ -10095,9 +10096,9 @@ static void ggml_vk_check_results_1(ggml_tensor * tensor) {
     ggml_tensor * src3 = tensor->src[3];
 
     {
-        debugTensorPrint(src0);
-        debugTensorPrint(src1);
-        debugTensorPrint(tensor);
+        // debugTensorPrint(src0);
+        // debugTensorPrint(src1);
+        // debugTensorPrint(tensor);
     }
 
     void * tensor_data = tensor->data;
