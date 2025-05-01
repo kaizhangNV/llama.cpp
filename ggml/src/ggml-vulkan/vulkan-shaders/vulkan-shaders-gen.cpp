@@ -302,9 +302,9 @@ void string_to_spv(const std::string& _name, const std::string& in_fname, const 
 }
 
 void matmul_shaders(bool fp16, bool matmul_id, bool coopmat, bool coopmat2, bool f16acc) {
-    std::string load_vec = coopmat2 ? "1" : fp16 ? "8" : "4";
-    std::string aligned_b_type_f32 = coopmat2 ? "float" : fp16 ? "mat2x4" : "vec4";
-    std::string aligned_b_type_f16 = coopmat2 ? "float16_t" : fp16 ? "f16mat2x4" : "f16vec4";
+    std::string load_vec = "1";// coopmat2 ? "1" : fp16 ? "8" : "4";
+    std::string aligned_b_type_f32 = "float";// coopmat2 ? "float" : fp16 ? "mat2x4" : "vec4";
+    std::string aligned_b_type_f16 = "float16_t"; // coopmat2 ? "float16_t" : fp16 ? "f16mat2x4" : "f16vec4";
 
     std::map<std::string, std::string> base_dict = {
         {"FLOAT_TYPE", (coopmat2 || fp16) ? "float16_t" : "float"},
