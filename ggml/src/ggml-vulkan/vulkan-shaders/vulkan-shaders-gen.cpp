@@ -216,17 +216,20 @@ static std::condition_variable compile_count_cond;
 void string_to_spv_func(const std::string& _name, const std::string& in_fname, const std::map<std::string, std::string>& defines, bool fp16 = true, bool coopmat = false, bool coopmat2 = false, bool f16acc = false) {
     std::string name = _name + (f16acc ? "_f16acc" : "") + (coopmat ? "_coopmat" : "") + (coopmat2 ? "_cm2" : (fp16 ? "" : "_fp32"));
     std::string out_fname = join_paths(output_dir, name + ".spv");
+    std::string out_fname_glsl = join_paths(output_dir, name + ".glsl");
     std::string in_path = join_paths(input_dir, in_fname);
 
     std::string target_env = (name.find("_cm2") != std::string::npos) ? "--target-env=vulkan1.3" : "--target-env=vulkan1.2";
 
     // disable spirv-opt for coopmat shaders for https://github.com/ggerganov/llama.cpp/issues/10734
-    std::string opt_level = coopmat ? "" : "-O";
+    std::string opt_level = coopmat ? "-O0" : "-O2";
 
+    std::string warning_disable = "-warnings-disable 15205,39001,30081";
     #ifdef _WIN32
         std::vector<std::string> cmd = {GLSLC, "-fshader-stage=compute", target_env, opt_level, "\"" + in_path + "\"", "-o", "\"" + out_fname + "\""};
     #else
-        std::vector<std::string> cmd = {GLSLC, "-fshader-stage=compute", target_env, opt_level, in_path, "-o",  out_fname};
+        std::vector<std::string> cmd = {GLSLC, "-stage compute -entry main -allow-glsl", opt_level, in_path, "-o",  out_fname, warning_disable};
+        std::vector<std::string> cmd1 = {"/bin/glslc", "-E", in_path, "-o",  out_fname_glsl, };
     #endif
 
     #ifdef GGML_VULKAN_SHADER_DEBUG_INFO
@@ -235,11 +238,17 @@ void string_to_spv_func(const std::string& _name, const std::string& in_fname, c
 
     for (const auto& define : defines) {
         cmd.push_back("-D" + define.first + "=" + define.second);
+        cmd1.push_back("-D" + define.first + "=" + define.second);
     }
 
     std::string command;
     for (const auto& part : cmd) {
         command += part + " ";
+    }
+
+    std::string command1;
+    for (const auto& part : cmd1) {
+        command1 += part + " ";
     }
 
     std::string stdout_str, stderr_str;
@@ -251,13 +260,16 @@ void string_to_spv_func(const std::string& _name, const std::string& in_fname, c
         // std::cout << std::endl;
 
         execute_command(command, stdout_str, stderr_str);
+        std::cerr << command <<std::endl;
+        execute_command(command1, stdout_str, stderr_str);
         if (!stderr_str.empty()) {
             std::cerr << "cannot compile " << name << "\n\n" << command << "\n\n" << stderr_str << std::endl;
-            return;
         }
-
-        std::lock_guard<std::mutex> guard(lock);
-        shader_fnames.push_back(std::make_pair(name, out_fname));
+        else
+        {
+            std::lock_guard<std::mutex> guard(lock);
+            shader_fnames.push_back(std::make_pair(name, out_fname));
+        }
     } catch (const std::exception& e) {
         std::cerr << "Error executing command for " << name << ": " << e.what() << std::endl;
     }
@@ -291,9 +303,9 @@ void string_to_spv(const std::string& _name, const std::string& in_fname, const 
 }
 
 void matmul_shaders(bool fp16, bool matmul_id, bool coopmat, bool coopmat2, bool f16acc) {
-    std::string load_vec = coopmat2 ? "1" : fp16 ? "8" : "4";
-    std::string aligned_b_type_f32 = coopmat2 ? "float" : fp16 ? "mat2x4" : "vec4";
-    std::string aligned_b_type_f16 = coopmat2 ? "float16_t" : fp16 ? "f16mat2x4" : "f16vec4";
+    std::string load_vec = "1";// coopmat2 ? "1" : fp16 ? "8" : "4";
+    std::string aligned_b_type_f32 = "float";// coopmat2 ? "float" : fp16 ? "mat2x4" : "vec4";
+    std::string aligned_b_type_f16 = "float16_t"; // coopmat2 ? "float16_t" : fp16 ? "f16mat2x4" : "f16vec4";
 
     std::map<std::string, std::string> base_dict = {
         {"FLOAT_TYPE", (coopmat2 || fp16) ? "float16_t" : "float"},

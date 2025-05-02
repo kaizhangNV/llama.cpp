@@ -1,6 +1,7 @@
 #version 450
 
 #extension GL_EXT_shader_explicit_arithmetic_types_int32 : require
+#extension GL_EXT_debug_printf : enable
 
 #include "mul_mat_vec_base.comp"
 
@@ -154,7 +155,13 @@ void compute_outputs(const uint32_t first_row, const uint32_t num_rows) {
 
 void main() {
     const uint first_row = NUM_ROWS * (gl_WorkGroupID.x + gl_NumWorkGroups.x * gl_WorkGroupID.z);
+    // debugPrintfEXT("[%d]", gl_LocalInvocationID.x);
 
+    // if (gl_LocalInvocationID.x == 0)
+    // {
+    //     debugPrintfEXT("[%d %d] first_row: %u, %u, ncol = %d\n", gl_WorkGroupID.x, gl_LocalInvocationID.x, first_row, NUM_ROWS);
+    //
+    // }
     // do NUM_ROWS at a time, unless there aren't enough remaining rows
     if (first_row + NUM_ROWS <= p.stride_d) {
         compute_outputs(first_row, NUM_ROWS);
