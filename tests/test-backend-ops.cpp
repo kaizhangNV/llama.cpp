@@ -3835,7 +3835,7 @@ static const ggml_type all_types[] = {
     GGML_TYPE_Q6_K,
     // GGML_TYPE_TQ1_0, GGML_TYPE_TQ2_0, // TODO: implement for all backends
     GGML_TYPE_IQ2_XXS, GGML_TYPE_IQ2_XS, GGML_TYPE_IQ2_S,
-    GGML_TYPE_IQ3_XXS, /*GGML_TYPE_IQ1_S, GGML_TYPE_IQ1_M,*/
+    GGML_TYPE_IQ3_XXS, GGML_TYPE_IQ1_S, GGML_TYPE_IQ1_M,
     GGML_TYPE_IQ4_NL, GGML_TYPE_IQ3_S, GGML_TYPE_IQ4_XS,
 };
 
@@ -3857,7 +3857,7 @@ static const ggml_type other_types[] = {
     GGML_TYPE_Q6_K,
     // GGML_TYPE_TQ1_0, GGML_TYPE_TQ2_0, // TODO: implement for all backends
     GGML_TYPE_IQ2_XS, GGML_TYPE_IQ2_S,
-    GGML_TYPE_IQ3_XXS, /*GGML_TYPE_IQ1_S, GGML_TYPE_IQ1_M,*/
+    GGML_TYPE_IQ3_XXS, GGML_TYPE_IQ1_S, GGML_TYPE_IQ1_M,
     GGML_TYPE_IQ4_NL, GGML_TYPE_IQ3_S, GGML_TYPE_IQ4_XS,
     GGML_TYPE_BF16,
 };
@@ -3876,6 +3876,8 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
             }
         }
     }
+
+    test_cases.emplace_back(new test_get_rows(GGML_TYPE_IQ1_S, 256, 5, 4, 1, false));
 
     test_cases.emplace_back(new test_get_rows(GGML_TYPE_F32, 1, 8, 2, 1, false));
     for (ggml_type type : all_types) {

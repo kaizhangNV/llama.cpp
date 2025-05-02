@@ -27,7 +27,7 @@ void main() {
     [[unroll]] for (uint l = 0; l < 4; ++l) {
         const uint qs = data_a[ib].qs[4 * ib32 + l];
         const uint hi = bitfieldExtract(qh, 3 * int(l), 3);
-        const int16_t grid = int16_t(iq1s_grid[qs | (hi << 8)]);
+        const int grid = int16_t(iq1s_grid[qs | (hi << 8)]);
         [[unroll]] for (int j = 0; j < 8; ++j) {
             data_b[b_idx + 8 * l + j] = D_TYPE(dl * (bitfieldExtract(grid, 2*j, 2) + delta));
         }

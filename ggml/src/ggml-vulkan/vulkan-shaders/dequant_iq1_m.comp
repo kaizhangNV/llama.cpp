@@ -34,7 +34,7 @@ void main() {
         const uint qh = data_a[ib].qh[ib16] >> (4 * (l & 1));
         const uint qs = data_a[ib].qs[4 * ib32 + l];
         const float delta = ((qh & 8) != 0) ? -IQ1M_DELTA : IQ1M_DELTA;
-        const int16_t grid = int16_t(iq1s_grid[qs | ((qh & 7) << 8)]);
+        const int grid = int16_t(iq1s_grid[qs | ((qh & 7) << 8)]);
         [[unroll]] for (int j = 0; j < 8; ++j) {
             data_b[b_idx + 8 * l + j] = D_TYPE(dl * (bitfieldExtract(grid, 2*j, 2) + delta));
         }
